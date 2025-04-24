@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Instant Video Chat</title>
+</head>
+<body>
+  <h2>Great group Video Chat</h2>
+  <p id="status">Initializing...</p>
+  <video id="yourVideo" autoplay muted playsinline width="300"></video>
+  <video id="friendVideo" autoplay playsinline width="300"></video>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script>
+    const yourVideo = document.getElementById('yourVideo');
+    const friendVideo = document.getElementById('friendVideo');
+    const status = document.getElementById('status');
+
+    let peer, localStream;
+    let isCaller = false;
+
+    const ROOM_ID = 'great-cam-room'; // static room ID — same for all
+
+    async function init() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        yourVideo.srcObject = localStream;
+      } catch (e) {
+        alert("Camera/Mic access denied.");
+        return;
+      }
+
+      peer = new Peer(ROOM_ID, { debug: 2 });
+
+      peer.on('open', () => {
+        status.textContent = 'Waiting for friend to join...';
+      });
+
+      peer.on('error', err => {
+        // Peer already taken? Then YOU are the caller
+        isCaller = true;
+        peer = new Peer();
+        peer.on('open', () => {
+          status.textContent = 'Calling friend...';
+          const call = peer.call(ROOM_ID, localStream);
+          call.on('stream', stream => {
+            friendVideo.srcObject = stream;
+          });
+        });
+      });
+
+      peer.on('call', call => {
+        call.answer(localStream);
+        call.on('stream', stream => {
+          friendVideo.srcObject = stream;
+        });
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
